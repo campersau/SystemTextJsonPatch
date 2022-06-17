@@ -13,6 +13,12 @@ namespace SystemTextJsonPatch.Converters
 
 
     {
+
+        private static readonly JsonEncodedText OpText = JsonEncodedText.Encode("op");
+        private static readonly JsonEncodedText PathText = JsonEncodedText.Encode("path");
+        private static readonly JsonEncodedText FromText = JsonEncodedText.Encode("from");
+        private static readonly JsonEncodedText ValueText = JsonEncodedText.Encode("value");
+
         protected List<TOperation> ParseOperations(ref Utf8JsonReader reader)
         {
             if (reader.TokenType == JsonTokenType.StartArray)
@@ -38,27 +44,24 @@ namespace SystemTextJsonPatch.Converters
                             throw new JsonPatchException(Resources.InvalidJsonPatchDocument, null);
                         }
 
-                        var name = reader.GetString();
-
-                        if (!reader.Read())
+                        if (reader.ValueTextEquals(OpText.EncodedUtf8Bytes))
                         {
-                            throw new JsonPatchException(Resources.InvalidJsonPatchDocument, null);
-                        }
-
-                        if ("op".Equals(name, StringComparison.OrdinalIgnoreCase))
-                        {
+                            CheckedRead(ref reader);
                             op = reader.GetString();
                         }
-                        else if ("path".Equals(name, StringComparison.OrdinalIgnoreCase))
+                        else if (reader.ValueTextEquals(PathText.EncodedUtf8Bytes))
                         {
+                            CheckedRead(ref reader);
                             path = reader.GetString();
                         }
-                        else if ("from".Equals(name, StringComparison.OrdinalIgnoreCase))
+                        else if (reader.ValueTextEquals(FromText.EncodedUtf8Bytes))
                         {
+                            CheckedRead(ref reader);
                             from = reader.GetString();
                         }
-                        else if ("value".Equals(name, StringComparison.OrdinalIgnoreCase))
+                        else if (reader.ValueTextEquals(ValueText.EncodedUtf8Bytes))
                         {
+                            CheckedRead(ref reader);
                             switch (reader.TokenType)
                             {
                                 case JsonTokenType.String:
@@ -104,6 +107,14 @@ namespace SystemTextJsonPatch.Converters
             return null;
         }
 
+        private static void CheckedRead(ref Utf8JsonReader reader)
+        {
+            if (!reader.Read())
+            {
+                throw new JsonPatchException(Resources.InvalidJsonPatchDocument, null);
+            }
+        }
+
         public override void Write(Utf8JsonWriter writer, TType value, JsonSerializerOptions options)
         {
             if (value is IJsonPatchDocument jsonPatchDoc)
@@ -115,15 +126,15 @@ namespace SystemTextJsonPatch.Converters
                 foreach (var operation in operations)
                 {
                     writer.WriteStartObject();
-                    writer.WriteString("op", operation.op);
-                    writer.WriteString("path", operation.path);
+                    writer.WriteString(OpText, operation.op);
+                    writer.WriteString(PathText, operation.path);
 
                     if (!string.IsNullOrEmpty(operation.from))
                     {
-                        writer.WriteString("from", operation.from);
+                        writer.WriteString(FromText, operation.from);
                     }
 
-                    writer.WritePropertyName("value");
+                    writer.WritePropertyName(ValueText);
                     JsonSerializer.Serialize(writer, operation.value, options);
                     writer.WriteEndObject();
                 }
